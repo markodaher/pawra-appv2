@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pawra Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fa; --surface: #fff; --ink: #0c1a35; --ink2: #3a4e6e; --muted: #7a8ea8;
+      --brand: #1a3a6e; --brand-soft: #d8e2f0; --accent: #d42b2b; --accent-soft: #fadddd;
+      --hairline: rgba(12,26,53,0.09); --success: #2e7d55; --warn: #c97a3a; --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); color: var(--ink); min-height: 100vh; }
+    /* ── Layout ── */
+    #app { display: flex; min-height: 100vh; }
+    nav  { width: 220px; background: var(--ink); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+    main { flex: 1; padding: 32px; overflow-y: auto; }
+    /* ── Nav ── */
+    .nav-logo { color: #fff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; padding: 8px 12px 20px; }
+    .nav-logo span { color: #6fa8d8; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+                color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; cursor: pointer;
+                transition: background 0.15s; text-decoration: none; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+    .nav-item svg { flex-shrink: 0; }
+    /* ── Cards ── */
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--hairline);
+             padding: 20px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--hairline);
+           padding: 16px; }
+    .kpi-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .kpi-value { font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.6px; margin-top: 6px; }
+    .kpi-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    /* ── Tables ── */
+    .section-title { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.3px; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700;
+         color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;
+         border-bottom: 1px solid var(--hairline); background: var(--bg); }
+    td { padding: 12px 14px; font-size: 13.5px; border-bottom: 1px solid var(--hairline); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
+             font-size: 11px; font-weight: 700; letter-spacing: 0.2px; }
+    .badge-pending  { background: #fff7ed; color: var(--warn); }
+    .badge-approved { background: #d4edda; color: var(--success); }
+    .badge-rejected { background: var(--accent-soft); color: var(--accent); }
+    .badge-active   { background: var(--brand-soft); color: var(--brand); }
+    .badge-suspended{ background: #f5f5f5; color: #888; }
+    /* ── Buttons ── */
+    .btn { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+           cursor: pointer; border: none; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-approve { background: var(--success); color: #fff; }
+    .btn-reject  { background: var(--accent);  color: #fff; }
+    .btn-suspend { background: var(--ink);      color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    /* ── Login ── */
+    #login { display: flex; flex-direction: column; align-items: center; justify-content: center;
+             min-height: 100vh; gap: 16px; }
+    #login h1 { font-size: 24px; font-weight: 700; }
+    #login input { width: 320px; padding: 12px 16px; border-radius: 10px;
+                   border: 1px solid var(--hairline); font-size: 15px; }
+    #login .btn { width: 320px; padding: 12px; font-size: 15px; background: var(--brand); color: #fff; }
+    /* ── Modal ── */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+                      display: flex; align-items: center; justify-content: center; z-index: 99; }
+    .modal { background: var(--surface); border-radius: 16px; padding: 24px; width: 480px;
+             max-height: 80vh; overflow-y: auto; }
+    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+    .modal textarea { width: 100%; padding: 10px; border-radius: 8px;
+                      border: 1px solid var(--hairline); font-size: 14px; resize: vertical; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    /* ── Misc ── */
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .mt { margin-top: 24px; }
+    .flex-row { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-soft);
+               display: flex; align-items: center; justify-content: center;
+               font-size: 14px; font-weight: 700; color: var(--brand); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<div id="login" style="display:none">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div style="width:44px;height:44px;background:var(--brand);border-radius:12px;display:flex;align-items:center;justify-content:center">
+      <span style="font-size:22px">🐾</span>
+    </div>
+    <h1>Pawra Admin</h1>
+  </div>
+  <p style="color:var(--muted);font-size:14px">Sign in with your Supabase service account</p>
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+  <button class="btn" onclick="login()">Sign in</button>
+  <p id="login-err" style="color:var(--accent);font-size:13px"></p>
+</div>
+
+<div id="app" style="display:none">
+  <nav>
+    <div class="nav-logo">Pawra <span>Admin</span></div>
+    <a class="nav-item active" onclick="showPage('dashboard')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" onclick="showPage('providers')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      Providers
+    </a>
+    <a class="nav-item" onclick="showPage('verifications')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      ID Verifications
+    </a>
+    <a class="nav-item" onclick="showPage('bookings')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Bookings
+    </a>
+    <a class="nav-item" onclick="showPage('orders')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 016 0v2"/></svg>
+      Orders
+    </a>
+    <a class="nav-item" onclick="showPage('reviews')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3 6.5 7 1-5 4.8 1.2 7L12 17.8l-6.2 3.5 1.2-7-5-4.8 7-1z"/></svg>
+      Reviews
+    </a>
+    <a class="nav-item" onclick="showPage('users')" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Users
+    </a>
+    <div style="margin-top:auto;padding-top:20px">
+      <a class="nav-item" onclick="logout()" href="#" style="color:rgba(255,255,255,0.5)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v9M5.5 7.5a8 8 0 1013 0"/></svg>
+        Sign out
+      </a>
+    </div>
+  </nav>
+  <main id="main-content">
+    <div class="loading">Loading…</div>
+  </main>
+</div>
+
+<div id="modal-container"></div>
+
+<script>
+// ── Config — replace with your project values ──────────────────────────────
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// ────────────────────────────────────────────────────────────────────────────
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentPage = 'dashboard';
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) showApp();
+  else showLogin();
+}
+
+function showLogin() {
+  document.getElementById('login').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  showPage('dashboard');
+}
+
+async function login() {
+  const email    = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) document.getElementById('login-err').textContent = error.message;
+  else showApp();
+}
+async function logout() {
+  await sb.auth.signOut();
+  showLogin();
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event?.target?.closest('.nav-item')?.classList.add('active');
+  const pages = { dashboard, providers, verifications, bookings, orders, reviews, users };
+  pages[page]?.();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function render(html) { document.getElementById('main-content').innerHTML = html; }
+function fmt(n) { return Number(n || 0).toFixed(2); }
+function badge(status) {
+  const map = { pending:'badge-pending', approved:'badge-approved', rejected:'badge-rejected',
+                active:'badge-active', suspended:'badge-suspended',
+                confirmed:'badge-approved', completed:'badge-approved',
+                declined:'badge-rejected', cancelled:'badge-rejected',
+                placed:'badge-pending', shipped:'badge-active', published:'badge-approved' };
+  return `<span class="badge ${map[status]||'badge-pending'}">${status}</span>`;
+}
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+function modal(html) { document.getElementById('modal-container').innerHTML = html; }
+function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+async function dashboard() {
+  render('<div class="loading">Loading dashboard…</div>');
+  const [
+    { count: totalProviders },
+    { count: totalOwners },
+    { count: totalBookings },
+    { count: totalOrders },
+    { count: pendingVerif },
+    { data: recentBookings },
+  ] = await Promise.all([
+    sb.from('providers').select('*', { count:'exact', head:true }),
+    sb.from('profiles').select('*', { count:'exact', head:true }).eq('role','owner'),
+    sb.from('bookings').select('*', { count:'exact', head:true }),
+    sb.from('orders').select('*', { count:'exact', head:true }),
+    sb.from('id_verifications').select('*', { count:'exact', head:true }).eq('status','pending'),
+    sb.from('bookings').select('*').order('created_at', { ascending:false }).limit(5),
+  ]);
+
+  // GMV
+  const { data: completedBookings } = await sb.from('bookings').select('amount').eq('status','completed');
+  const { data: completedOrders }   = await sb.from('orders').select('total').eq('status','completed');
+  const gmv = (completedBookings||[]).reduce((s,b)=>s+Number(b.amount),0)
+            + (completedOrders||[]).reduce((s,o)=>s+Number(o.total),0);
+
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Dashboard</h2>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Providers</div><div class="kpi-value">${totalProviders||0}</div></div>
+      <div class="kpi"><div class="kpi-label">Pet owners</div><div class="kpi-value">${totalOwners||0}</div></div>
+      <div class="kpi"><div class="kpi-label">Total bookings</div><div class="kpi-value">${totalBookings||0}</div></div>
+      <div class="kpi"><div class="kpi-label">Total orders</div><div class="kpi-value">${totalOrders||0}</div></div>
+      <div class="kpi"><div class="kpi-label">GMV</div><div class="kpi-value">$${fmt(gmv)}</div><div class="kpi-sub">Completed transactions</div></div>
+      <div class="kpi" style="${(pendingVerif||0)>0?'border-color:var(--warn)':''}">
+        <div class="kpi-label" style="${(pendingVerif||0)>0?'color:var(--warn)':''}">Pending ID verifs</div>
+        <div class="kpi-value" style="${(pendingVerif||0)>0?'color:var(--warn)':''}">${pendingVerif||0}</div>
+        <div class="kpi-sub"><a href="#" onclick="showPage('verifications')" style="color:var(--brand)">Review →</a></div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="section-title">Recent bookings</div>
+      <table>
+        <thead><tr><th>Owner</th><th>Provider</th><th>Service</th><th>Amount</th><th>Status</th><th>When</th></tr></thead>
+        <tbody>
+          ${(recentBookings||[]).map(b=>`
+            <tr>
+              <td>${b.owner_name||'—'}</td>
+              <td>${b.provider_name||'—'}</td>
+              <td>${b.service||'—'}</td>
+              <td>$${fmt(b.amount)}</td>
+              <td>${badge(b.status)}</td>
+              <td style="color:var(--muted)">${timeAgo(b.created_at)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Providers ──────────────────────────────────────────────────────────────
+async function providers() {
+  render('<div class="loading">Loading providers…</div>');
+  const { data } = await sb.from('providers').select('*').order('created_at', { ascending:false });
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Providers</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name</th><th>Area</th><th>Categories</th><th>Rating</th><th>Status</th><th>Verified</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(p=>`
+            <tr>
+              <td><div class="flex-row"><div class="avatar">${initials(p.name)}</div>${p.name||'Unnamed'}</div></td>
+              <td>${p.area||'—'}</td>
+              <td style="font-size:12px;color:var(--muted)">${(p.categories||[]).join(', ')||'—'}</td>
+              <td>${p.rating>0?'★ '+Number(p.rating).toFixed(1):'New'}</td>
+              <td>${badge(p.published?'published':'draft')}</td>
+              <td>${p.verified?'<span style="color:var(--success)">✓ Yes</span>':'<span style="color:var(--muted)">No</span>'}</td>
+              <td>
+                ${!p.verified?`<button class="btn btn-approve btn-sm" onclick="verifyProvider('${p.id}','${p.name}')">Verify</button>`:''}
+                <button class="btn btn-suspend btn-sm" onclick="suspendProvider('${p.id}','${p.name}')">Suspend</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+async function verifyProvider(id, name) {
+  if (!confirm(`Verify ${name}?`)) return;
+  await sb.from('providers').update({ verified: true }).eq('id', id);
+  providers();
+}
+async function suspendProvider(id, name) {
+  if (!confirm(`Suspend ${name}? They will be set to unpublished.`)) return;
+  await sb.from('providers').update({ published: false }).eq('id', id);
+  providers();
+}
+
+// ── ID Verifications ───────────────────────────────────────────────────────
+async function verifications() {
+  render('<div class="loading">Loading verifications…</div>');
+  const { data } = await sb.from('id_verifications').select('*').order('submitted_at', { ascending:false });
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">ID Verifications</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Provider ID</th><th>Status</th><th>Submitted</th><th>Front</th><th>Back</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(v=>`
+            <tr>
+              <td style="font-family:monospace;font-size:12px">${v.provider_id.slice(-8).toUpperCase()}</td>
+              <td>${badge(v.status)}</td>
+              <td style="color:var(--muted)">${timeAgo(v.submitted_at)}</td>
+              <td><a href="${v.front_url}" target="_blank" style="color:var(--brand)">View front</a></td>
+              <td><a href="${v.back_url}"  target="_blank" style="color:var(--brand)">View back</a></td>
+              <td style="display:flex;gap:6px">
+                ${v.status==='pending'?`
+                  <button class="btn btn-approve btn-sm" onclick="reviewVerif('${v.id}','approved')">Approve</button>
+                  <button class="btn btn-reject  btn-sm"  onclick="reviewVerif('${v.id}','rejected')">Reject</button>
+                `:''}
+                ${v.admin_note?`<span style="font-size:12px;color:var(--muted)">${v.admin_note}</span>`:''}
+              </td>
+            </tr>
+          `).join('')}
+          ${!data?.length?'<tr><td colspan="6" class="empty">No verifications yet</td></tr>':''}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+async function reviewVerif(id, status) {
+  let note = '';
+  if (status === 'rejected') { note = prompt('Rejection reason (shown to provider):') || ''; }
+  await sb.from('id_verifications').update({ status, admin_note: note||null }).eq('id', id);
+  verifications();
+}
+
+// ── Bookings ───────────────────────────────────────────────────────────────
+async function bookings() {
+  render('<div class="loading">Loading bookings…</div>');
+  const { data } = await sb.from('bookings').select('*').order('created_at', { ascending:false }).limit(100);
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Bookings</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Owner</th><th>Provider</th><th>Service</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(b=>`
+            <tr>
+              <td>${b.owner_name||'—'}</td>
+              <td>${b.provider_name||'—'}</td>
+              <td>${b.service||'—'}</td>
+              <td>$${fmt(b.amount)}</td>
+              <td>${badge(b.status)}</td>
+              <td style="color:var(--muted)">${new Date(b.created_at).toLocaleDateString()}</td>
+              <td>
+                ${b.decline_reason?`<span style="font-size:12px;color:var(--muted)" title="${b.decline_reason}">Has reason</span>`:''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Orders ─────────────────────────────────────────────────────────────────
+async function orders() {
+  render('<div class="loading">Loading orders…</div>');
+  const { data } = await sb.from('orders').select('*').order('created_at', { ascending:false }).limit(100);
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Orders</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Buyer</th><th>Shop</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(o=>`
+            <tr>
+              <td>${o.owner_name||'—'}</td>
+              <td>${o.vendor_name||'—'}</td>
+              <td style="color:var(--muted)">${o.item_count} item${o.item_count===1?'':'s'}</td>
+              <td>$${fmt(o.total)}</td>
+              <td>${badge(o.status)}</td>
+              <td style="color:var(--muted)">${new Date(o.created_at).toLocaleDateString()}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+async function reviews() {
+  render('<div class="loading">Loading reviews…</div>');
+  const { data } = await sb.from('reviews').select('*').order('created_at', { ascending:false }).limit(100);
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Reviews</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Author</th><th>Provider ID</th><th>Rating</th><th>Review</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(r=>`
+            <tr>
+              <td>${r.author_name||'—'}</td>
+              <td style="font-family:monospace;font-size:12px">${r.provider_id.slice(-8).toUpperCase()}</td>
+              <td>${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td>
+              <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.body||'—'}</td>
+              <td style="color:var(--muted)">${new Date(r.created_at).toLocaleDateString()}</td>
+              <td><button class="btn btn-reject btn-sm" onclick="deleteReview('${r.id}')">Remove</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+async function deleteReview(id) {
+  if (!confirm('Remove this review?')) return;
+  await sb.from('reviews').delete().eq('id', id);
+  reviews();
+}
+
+// ── Users ──────────────────────────────────────────────────────────────────
+async function users() {
+  render('<div class="loading">Loading users…</div>');
+  const { data } = await sb.from('profiles').select('*').order('created_at', { ascending:false }).limit(100);
+  render(`
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:20px">Users</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+        <tbody>
+          ${(data||[]).map(u=>`
+            <tr>
+              <td><div class="flex-row"><div class="avatar">${initials(u.name)}</div>${u.name||'—'}</div></td>
+              <td style="color:var(--muted)">${u.email||'—'}</td>
+              <td>${badge(u.role||'owner')}</td>
+              <td style="color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
