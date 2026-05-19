@@ -267,6 +267,7 @@ type Ctx = {
   profileOpen: boolean; setProfileOpen: (v: boolean) => void;
   pawPointsOpen: boolean; setPawPointsOpen: (v: boolean) => void;
   addProductOpen: Product | 'new' | null; setAddProductOpen: (v: Product | 'new' | null) => void;
+  addOfferingOpen: ServiceCategoryId | null; setAddOfferingOpen: (v: ServiceCategoryId | null) => void;
   unlistProduct: (id: string) => Promise<void>;
   providerSetupOpen: boolean; setProviderSetupOpen: (v: boolean) => void;
   ownerProfileSetupOpen: boolean; setOwnerProfileSetupOpen: (v: boolean) => void;
@@ -431,6 +432,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [pawPointsOpen, setPawPointsOpen] = useState(false);
   const [addProductOpen, setAddProductOpen] = useState<Product | 'new' | null>(null);
+  const [addOfferingOpen, setAddOfferingOpen] = useState<ServiceCategoryId | null>(null);
   const [providerSetupOpen, setProviderSetupOpen] = useState(false);
   const [ownerProfileSetupOpen, setOwnerProfileSetupOpen] = useState(false);
   const [petSheetOpen, setPetSheetOpen] = useState(false);
@@ -1926,6 +1928,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profileOpen, setProfileOpen,
     pawPointsOpen, setPawPointsOpen,
     addProductOpen, setAddProductOpen,
+    addOfferingOpen, setAddOfferingOpen,
     providerSetupOpen, setProviderSetupOpen,
     ownerProfileSetupOpen, setOwnerProfileSetupOpen,
     petSheetOpen, setPetSheetOpen,
@@ -1960,7 +1963,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     providerAlerting, feedbackEnabled, bookingOpen, storefrontCategoryOpen, providerDetailOpen, providerShopOpen, productDetailOpen,
     idVerification, payoutSetup, payoutSetupOpen,
     lastCheckoutMeta,
-    cartOpen, orderCheckoutOpen, checkoutOpen, emergencyOpen, profileOpen, pawPointsOpen, addProductOpen, providerSetupOpen,
+    cartOpen, orderCheckoutOpen, checkoutOpen, emergencyOpen, profileOpen, pawPointsOpen, addProductOpen, addOfferingOpen, providerSetupOpen,
     ownerProfileSetupOpen, petSheetOpen, petSheetEdit,
     activityDetailOpen, orderDetailOpen, reviewSheetFor, reviewsListForProvider, reviews,
     chatTarget, unreadChatCount,

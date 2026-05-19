@@ -48,6 +48,7 @@ import { ProviderServicesScreen } from '../components/provider/Services';
 import { ProviderShopManager } from '../components/provider/ShopManager';
 import { ProviderProfile } from '../components/provider/Profile';
 import { AddProductSheet } from '../components/provider/AddProductSheet';
+import { AddOfferingSheet } from '../components/provider/AddOfferingSheet';
 import { ProviderOnboarding } from '../components/provider/Onboarding';
 
 const OWNER_TABS = [
@@ -225,6 +226,14 @@ export default function App() {
             T={T}
             edit={a.addProductOpen === 'new' ? null : a.addProductOpen}
             onClose={() => a.setAddProductOpen(null)}
+          />
+        ) : null}
+
+        {a.addOfferingOpen ? (
+          <AddOfferingSheet
+            T={T}
+            cat={a.addOfferingOpen}
+            onClose={() => a.setAddOfferingOpen(null)}
           />
         ) : null}
 

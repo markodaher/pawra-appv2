@@ -1,15 +1,12 @@
-import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SERVICE_TYPES } from '../../constants/data';
 import { useApp } from '../../lib/AppContext';
 import type { ServiceCategoryId, Theme } from '../../types';
 import { Icon } from '../Icon';
 import { Button } from '../primitives';
-import { AddOfferingSheet } from './AddOfferingSheet';
 
 export function ProviderServicesScreen({ T }: { T: Theme }) {
-  const { providerCategories, providerServices, toggleServiceActive } = useApp();
-  const [adding, setAdding] = useState<ServiceCategoryId | null>(null);
+  const { providerCategories, providerServices, toggleServiceActive, setAddOfferingOpen } = useApp();
 
   const cats: ServiceCategoryId[] = providerCategories.length
     ? providerCategories
@@ -63,7 +60,7 @@ export function ProviderServicesScreen({ T }: { T: Theme }) {
                 alignItems: 'center',
               }}>
                 <Text style={{ fontSize: 13.5, color: T.inkSoft, marginBottom: 10 }}>No offerings yet for {meta?.label || cat}.</Text>
-                <Button T={T} variant="ghost" icon="plus" onPress={() => setAdding(cat)}>Add offering</Button>
+                <Button T={T} variant="ghost" icon="plus" onPress={() => setAddOfferingOpen(cat)}>Add offering</Button>
               </View>
             ) : (
               <View style={{ gap: 8 }}>
@@ -103,7 +100,7 @@ export function ProviderServicesScreen({ T }: { T: Theme }) {
                     </Pressable>
                   </View>
                 ))}
-                <Pressable onPress={() => setAdding(cat)} style={{
+                <Pressable onPress={() => setAddOfferingOpen(cat)} style={{
                   padding: 12, paddingHorizontal: 14, borderRadius: 14,
                   borderWidth: 1.5, borderColor: T.hairline, borderStyle: 'dashed',
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -116,10 +113,6 @@ export function ProviderServicesScreen({ T }: { T: Theme }) {
           </View>
         );
       })}
-
-      {adding ? (
-        <AddOfferingSheet T={T} cat={adding} onClose={() => setAdding(null)} />
-      ) : null}
     </ScrollView>
   );
 }
